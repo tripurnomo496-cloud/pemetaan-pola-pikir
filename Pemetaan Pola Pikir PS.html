@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instrumen Pemetaan Pola Pikir Bertumbuh</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
+    
+    <style>
+        /* Apple-like Typography & Base Setup */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Custom Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .animate-fade-in-up {
+            animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Custom Utilities */
+        .apple-shadow {
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
+        .apple-blue {
+            background-color: #0071e3;
+        }
+        .apple-blue:hover {
+            background-color: #0077ed;
+        }
+        
+        .option-button {
+            transition: all 0.2s ease-in-out;
+        }
+        .option-button:active {
+            transform: scale(0.98);
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { background-color: white; }
+            .apple-shadow { box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-blue-200 selection:text-blue-900">
+    <div id="root" class="flex-grow flex flex-col relative"></div>
+
+    <script type="text/babel" data-type="module">
+        const { useState, useEffect } = React;
+
+        const questions = [
+            { id: 1, text: "Kemampuan Anda adalah sesuatu yang sangat mendasar yang tidak banyak dapat Anda ubah lagi.", isPositive: false },
+            { id: 2, text: "Tidak peduli seberapapun tingkat kemampuan Anda saat ini, Anda bisa mengubahnya walaupun sedikit.", isPositive: true },
+            { id: 3, text: "Anda akan selalu dapat mengubah kemampuan Anda.", isPositive: true },
+            { id: 4, text: "Anda adalah seseorang yang unik, tidak banyak yang dapat dilakukan untuk mengubahnya.", isPositive: false },
+            { id: 5, text: "Anda akan selalu dapat mengubah diri Anda sendiri.", isPositive: true },
+            { id: 6, text: "Kemampuan dalam bidang seni dan musik dapat dipelajari oleh siapapun.", isPositive: true },
+            { id: 7, text: "Hanya sedikit orang yang benar-benar mahir dalam olahraga, Anda harus membawa bakat ini sejak lahir.", isPositive: false },
+            { id: 8, text: "Matematika lebih mudah dipelajari oleh pria atau seseorang yang berada dalam lingkungan yang menyukainya.", isPositive: false },
+            { id: 9, text: "Makin keras Anda mengerjakan sesuatu makin mahir Anda dalam hal ini.", isPositive: true },
+            { id: 10, text: "Tidak peduli tipe apapun Anda saat ini, Anda akan selalu dapat mengubahnya.", isPositive: true },
+            { id: 11, text: "Mencoba sesuatu yang baru akan sangat menyulitkan Anda sehingga Anda ingin menghindarinya.", isPositive: false },
+            { id: 12, text: "Sebagian orang baik dan pintar, sebagian lagi tidak. Tidak banyak yang dapat berubah.", isPositive: false },
+            { id: 13, text: "Saya sangat menghargai kritik dan saran dari siapapun juga terkait dengan kinerja saya saat ini.", isPositive: true },
+            { id: 14, text: "Saya kurang senang bila ada kritik dan saran dari orang lain.", isPositive: false },
+            { id: 15, text: "Semua orang yang tanpa cacat-otak atau cacat-lahir memiliki kemampuan yang sama dalam belajar.", isPositive: true },
+            { id: 16, text: "Anda bisa mempelajari sesuatu yang baru, tapi Anda tidak bisa mengubah kemampuan Anda.", isPositive: false },
+            { id: 17, text: "Anda dapat melakukan sesuatu secara berbeda, tapi sebenarnya Anda tetap tidak dapat mengubah kemampuan Anda.", isPositive: false },
+            { id: 18, text: "Semua orang pada dasarnya baik, tapi kadang-kadang membuat keputusan yang salah.", isPositive: true },
+            { id: 19, text: "Alasan terpenting mengapa Anda melakukan pekerjaan Anda adalah keinginan untuk mempelajari sesuatu yang baru.", isPositive: true },
+            { id: 20, text: "Orang yang benar-benar cerdas, tidak perlu bekerja keras.", isPositive: false }
+        ];
+
+        const options = ["Sangat Setuju", "Setuju", "Tidak Setuju", "Sangat Tidak Setuju"];
+
+        function App() {
+            // State: -1 = Intro, 0-19 = Questions, 20 = Result
+            const [step, setStep] = useState(-1);
+            const [answers, setAnswers] = useState({});
+            const [userInfo, setUserInfo] = useState({ nama: '', instansi: '' });
+            const [isTransitioning, setIsTransitioning] = useState(false);
+
+            const handleOptionSelect = (questionId, optionIndex) => {
+                // Set jawaban
+                setAnswers(prev => ({
+                    ...prev,
+                    [questionId]: optionIndex
+                }));
+
+                // Auto-advance ke pertanyaan berikutnya dengan jeda untuk animasi
+                setIsTransitioning(true);
+                setTimeout(() => {
+                    setStep(prev => prev + 1);
+                    setIsTransitioning(false);
+                }, 350);
+            };
+
+            const handleBack = () => {
+                if (step > 0) {
+                    setIsTransitioning(true);
+                    setTimeout(() => {
+                        setStep(prev => prev - 1);
+                        setIsTransitioning(false);
+                    }, 200);
+                } else if (step === 0) {
+                    setStep(-1);
+                    setAnswers({});
+                }
+            };
+
+            const handleUserInfoChange = (e) => {
+                const { name, value } = e.target;
+                setUserInfo(prev => ({ ...prev, [name]: value }));
+            };
+
+            const calculateScore = () => {
+                let total = 0;
+                questions.forEach(q => {
+                    const answerIndex = answers[q.id];
+                    if (answerIndex !== undefined) {
+                        if (q.isPositive) {
+                            total += (3 - answerIndex);
+                        } else {
+                            total += answerIndex;
+                        }
+                    }
+                });
+                return total;
+            };
+
+            const getCategory = (score) => {
+                if (score <= 20) return { code: "F", name: "Fixed Mindset", desc: "Pola Pikir Tetap", color: "text-[#ff3b30]", bg: "bg-[#ffeceb]" };
+                if (score <= 33) return { code: "FG", name: "Fixed-Growth", desc: "Cenderung Tetap", color: "text-[#ff9500]", bg: "bg-[#fff6eb]" };
+                if (score <= 44) return { code: "GF", name: "Growth-Fixed", desc: "Cenderung Bertumbuh", color: "text-[#ffcc00]", bg: "bg-[#fffdeb]" };
+                return { code: "G", name: "Growth Mindset", desc: "Pola Pikir Bertumbuh", color: "text-[#34c759]", bg: "bg-[#ebf9ee]" };
+            };
+
+            const handleReset = () => {
+                if(window.confirm("Mulai dari awal dan hapus semua jawaban?")) {
+                    setAnswers({});
+                    setStep(-1);
+                }
+            };
+
+            // PROGRESS BAR COMPONENT
+            const ProgressBar = () => {
+                if (step < 0 || step >= questions.length) return null;
+                const progress = ((step) / questions.length) * 100;
+                
+                return (
+                    <div className="fixed top-0 left-0 w-full h-1.5 bg-gray-200 z-50">
+                        <div 
+                            className="h-full bg-[#0071e3] transition-all duration-500 ease-out"
+                            style={{ width: `${progress}%` }}
+                        ></div>
+                    </div>
+                );
+            };
+
+            // RENDER: INTRO
+            if (step === -1) {
+                return (
+                    <div className="flex-grow flex items-center justify-center p-6 animate-fade-in-up">
+                        <div className="max-w-2xl text-center space-y-8 w-full">
+                            <div className="inline-block p-4 bg-white rounded-3xl apple-shadow mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0071e3" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
+                                    <path d="M12 6v6l4 2"></path>
+                                </svg>
+                            </div>
+                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-[#1d1d1f]">
+                                Temukan Tipe<br />Pola Pikir Anda.
+                            </h1>
+                            <p className="text-xl md:text-2xl text-[#86868b] font-normal">
+                                Evaluasi 20 pernyataan untuk memetakan apakah Anda memiliki <i>Fixed Mindset</i> atau <i>Growth Mindset</i>.
+                            </p>
+                            
+                            <div className="pt-6 w-full max-w-sm mx-auto space-y-5 text-left">
+                                <div>
+                                    <label className="block text-sm font-semibold text-[#86868b] mb-2 pl-2 uppercase tracking-wider">Nama Lengkap</label>
+                                    <input 
+                                        type="text" 
+                                        name="nama"
+                                        value={userInfo.nama}
+                                        onChange={handleUserInfoChange}
+                                        placeholder="Masukkan nama Anda" 
+                                        className="w-full px-6 py-4 rounded-2xl border-none outline-none apple-shadow bg-white text-lg placeholder-gray-300 focus:ring-2 focus:ring-[#0071e3] transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-[#86868b] mb-2 pl-2 uppercase tracking-wider">Asal Instansi</label>
+                                    <input 
+                                        type="text" 
+                                        name="instansi"
+                                        value={userInfo.instansi}
+                                        onChange={handleUserInfoChange}
+                                        placeholder="Sekolah / Organisasi" 
+                                        className="w-full px-6 py-4 rounded-2xl border-none outline-none apple-shadow bg-white text-lg placeholder-gray-300 focus:ring-2 focus:ring-[#0071e3] transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="pt-8">
+                                <button 
+                                    onClick={() => {
+                                        if(!userInfo.nama.trim() || !userInfo.instansi.trim()) {
+                                            alert("Mohon isi Nama dan Asal Instansi terlebih dahulu.");
+                                            return;
+                                        }
+                                        setStep(0);
+                                    }}
+                                    className="apple-blue text-white px-10 py-4 rounded-full font-semibold text-lg hover:shadow-lg transition-all duration-300 transform hover:scale-105"
+                                >
+                                    Mulai Pemetaan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // RENDER: RESULT
+            if (step === questions.length) {
+                const score = calculateScore();
+                const category = getCategory(score);
+
+                return (
+                    <div className="flex-grow py-12 px-6 animate-fade-in-up flex flex-col items-center">
+                        <div className="w-full max-w-3xl space-y-8">
+                            
+                            <div className="text-center space-y-2 mb-12">
+                                <h2 className="text-xl font-medium text-[#86868b] uppercase tracking-widest">Hasil Evaluasi</h2>
+                                <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-[#1d1d1f] pt-2">
+                                    {userInfo.nama}
+                                </h1>
+                                <p className="text-xl text-[#86868b] pb-6">{userInfo.instansi}</p>
+                                
+                                <div className="inline-block px-8 py-3 bg-white rounded-full apple-shadow mt-4">
+                                     <h2 className="text-xl font-medium text-[#1d1d1f]">Skor Total: <span className="font-bold text-[#0071e3] ml-2 text-2xl">{score}</span></h2>
+                                </div>
+                            </div>
+
+                            <div className={`p-10 md:p-14 rounded-[2.5rem] apple-shadow text-center ${category.bg}`}>
+                                <h3 className={`text-xl font-bold mb-2 uppercase tracking-widest ${category.color}`}>
+                                    Kategori {category.code}
+                                </h3>
+                                <h2 className="text-4xl md:text-5xl font-bold text-[#1d1d1f] mb-4">
+                                    {category.name}
+                                </h2>
+                                <p className="text-2xl text-[#86868b]">
+                                    ({category.desc})
+                                </p>
+                            </div>
+
+                            <div className="bg-white p-8 rounded-3xl apple-shadow overflow-hidden">
+                                <h3 className="text-lg font-semibold mb-6 text-center">Panduan Skoring Standar</h3>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {[
+                                        { code: 'F', range: '0 - 20', color: 'text-[#ff3b30]' },
+                                        { code: 'FG', range: '21 - 33', color: 'text-[#ff9500]' },
+                                        { code: 'GF', range: '34 - 44', color: 'text-[#ffcc00]' },
+                                        { code: 'G', range: '45 - 60', color: 'text-[#34c759]' }
+                                    ].map(item => (
+                                        <div key={item.code} className="p-4 bg-[#f5f5f7] rounded-2xl text-center">
+                                            <div className={`text-2xl font-bold mb-1 ${item.color}`}>{item.code}</div>
+                                            <div className="text-sm text-[#86868b] font-medium">{item.range}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row justify-center gap-4 pt-8 no-print">
+                                <button 
+                                    onClick={handleReset} 
+                                    className="px-8 py-4 bg-gray-200 hover:bg-gray-300 text-[#1d1d1f] rounded-full font-semibold transition-colors"
+                                >
+                                    Mulai Ulang
+                                </button>
+                                <button 
+                                    onClick={() => window.print()} 
+                                    className="px-8 py-4 apple-blue text-white rounded-full font-semibold transition-colors apple-shadow"
+                                >
+                                    Cetak Hasil
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                );
+            }
+
+            // RENDER: QUESTIONS
+            const q = questions[step];
+            const isSelected = (optIndex) => answers[q.id] === optIndex;
+
+            return (
+                <div className="flex-grow flex flex-col">
+                    <ProgressBar />
+                    
+                    {/* Header with Back Button */}
+                    <header className="p-6 flex items-center justify-between z-10 sticky top-0 bg-[#f5f5f7]/80 backdrop-blur-md">
+                        <button 
+                            onClick={handleBack}
+                            className="flex items-center text-[#0071e3] font-medium hover:opacity-70 transition-opacity"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Kembali
+                        </button>
+                        <span className="text-[#86868b] font-medium text-sm tracking-widest uppercase">
+                            {step + 1} DARI {questions.length}
+                        </span>
+                    </header>
+
+                    {/* Question Content */}
+                    <div className="flex-grow flex items-center justify-center p-6">
+                        <div 
+                            key={step} // Memaksa re-render animasi tiap ganti soal
+                            className={`w-full max-w-3xl transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'animate-fade-in-up opacity-100'}`}
+                        >
+                            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-center leading-tight mb-12 text-[#1d1d1f]">
+                                {q.text}
+                            </h2>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {options.map((opt, optIndex) => (
+                                    <button
+                                        key={optIndex}
+                                        onClick={() => handleOptionSelect(q.id, optIndex)}
+                                        className={`
+                                            option-button p-6 rounded-2xl text-lg md:text-xl font-medium text-center border-2 border-transparent outline-none
+                                            ${isSelected(optIndex) 
+                                                ? 'bg-blue-50 border-[#0071e3] text-[#0071e3]' 
+                                                : 'bg-white apple-shadow hover:bg-gray-50 text-[#1d1d1f]'}
+                                        `}
+                                    >
+                                        {opt}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
